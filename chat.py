@@ -18,9 +18,9 @@ MAX_CONTEXT = 5 # conversational memory window.
 # Gemini setup
 
 # Replace system prompt with your own
-system_prompt = "You are a helpful chatbot."
+system_prompt = "You are a helpful chatbot. You are a chatbot who helps Computer Science students at University of Washington select their CS courses. You are a custom chatbot who just helps with the selection of classes."
 
-genai.configure(api_key=os.environ["API_KEY"])
+genai.configure(api_key="AIzaSyBeSeig1txnJMY22RgX4sH5WrgpRQvChv0")
 
 model = genai.GenerativeModel(
     model_name="gemini-1.5-flash",
@@ -28,12 +28,12 @@ model = genai.GenerativeModel(
 )
 
 # Embedding function for vector queries
-google_ef  = embedding_functions.GoogleGenerativeAiEmbeddingFunction(api_key=os.environ["API_KEY"])
+google_ef  = embedding_functions.GoogleGenerativeAiEmbeddingFunction(api_key="AIzaSyBeSeig1txnJMY22RgX4sH5WrgpRQvChv0")
 
 # Vector database /!\ NOTE: must load_data.py first /!\ uncomment the following lines if you the collections
 
-# client = chromadb.PersistentClient(path="./data/vectorDB")
-# collection = client.get_collection(name="my_collection", embedding_function=google_ef)
+client = chromadb.PersistentClient(path="./data/vectorDB")
+collection = client.get_collection(name="my_collection", embedding_function=google_ef)
 
 #=====================================================#
 #                     Chat Code                       #
@@ -66,12 +66,13 @@ def chat(user_input=""):
     st.session_state.input = ""
 
     # To use custom data, query the database here and combine it with the user input for the LLM to reference
+    newUserInput = query_db(user_input)
 
     # Create chat completion based on message history + new user input
-    completion = llm.send_message(user_input)
+    completion = llm.send_message(' This is the user input: '+ user_input + 'And this is the data that you have from the database. Reply using this data primarily as the following is the most simmilar to the user request:' + newUserInput)
 
     # Add new user message to LLM message history
-    st.session_state.messages.append({"role": "user", "parts": user_input})
+    st.session_state.messages.append({"role": "user", "parts": user_input + newUserInput})
 
     # Add LLM response to message history
     st.session_state.messages.append({"role": "model", "parts": completion.text})

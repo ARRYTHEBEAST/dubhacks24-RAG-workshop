@@ -10,7 +10,7 @@ print(f"Uploading {FILE_PATH} to ChromaDB")
 
 load_dotenv()
 
-google_ef  = embedding_functions.GoogleGenerativeAiEmbeddingFunction(api_key=os.environ["API_KEY"])
+google_ef  = embedding_functions.GoogleGenerativeAiEmbeddingFunction(api_key="AIzaSyBeSeig1txnJMY22RgX4sH5WrgpRQvChv0")
 client = chromadb.PersistentClient(path="./data/vectorDB")
 
 # comment out the following line if you have already created the collection
