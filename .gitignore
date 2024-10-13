@@ -1,6 +1,6 @@
-*.sqlite3
-data/vectorDB/
-.DS_Store
+#*.sqlite3
+#data/vectorDB/
+#.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
