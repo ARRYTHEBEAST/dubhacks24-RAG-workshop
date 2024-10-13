@@ -1,14 +1,8 @@
 {
-  "dietary_restrictions": [
-    "Dairy-free"
-  ],
-  "favorite_cuisines": [
-    "Chinese"
-  ],
+  "dietary_restrictions": [],
+  "favorite_cuisines": [],
   "allergies": [
-    "peanuts"
+    ""
   ],
-  "health_goals": [
-    "Muscle gain"
-  ]
+  "health_goals": []
 }
