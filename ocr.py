@@ -7,9 +7,7 @@ import chromadb
 import chromadb.utils.embedding_functions as embedding_functions
 from dotenv import load_dotenv
 import json
-import pytesseract
-from PIL import Image
-import re
+from datetime import datetime
 
 load_dotenv()
 
@@ -26,7 +24,7 @@ Your jokes should be witty but never mean-spirited. When users ask off-topic que
 """
 
 # Configure Gemini API key
-genai.configure(api_key="YOUR_GEMINI_API_KEY")
+genai.configure(api_key="AIzaSyBeSeig1txnJMY22RgX4sH5WrgpRQvChv0")
 
 # Initialize the Generative AI model
 model = genai.GenerativeModel(
@@ -36,7 +34,7 @@ model = genai.GenerativeModel(
 
 # Embedding function for vector queries
 google_ef = embedding_functions.GoogleGenerativeAiEmbeddingFunction(
-    api_key="YOUR_GEMINI_API_KEY"
+    api_key="AIzaSyBeSeig1txnJMY22RgX4sH5WrgpRQvChv0"
 )
 
 # ChromaDB client and collection
@@ -76,12 +74,18 @@ def get_preferences_prompt():
     prompt += f"Health goals: {', '.join(preferences.get('health_goals', []))}."
     return prompt
 
-# Grocery and Inventory Management
+#Grocery and Inventory Management
 def load_inventory():
     if os.path.exists(INVENTORY_FILE):
         with open(INVENTORY_FILE, 'r') as f:
-            return json.load(f)
+            inventory = json.load(f)
+            # Ensure inventory is correctly structured
+            for item in inventory:
+                if isinstance(inventory[item], (int, float)):
+                    inventory[item] = {'quantity': inventory[item], 'unit': ''}
+            return inventory
     return {}
+
 
 def save_inventory(inventory):
     with open(INVENTORY_FILE, 'w') as f:
@@ -89,51 +93,35 @@ def save_inventory(inventory):
 
 def update_inventory(grocery_list):
     inventory = load_inventory()
-    for item, quantity in grocery_list.items():
+    for item, (quantity, unit) in grocery_list.items():
         if item in inventory:
-            inventory[item] += quantity
+            inventory[item]['quantity'] += quantity  # Assuming inventory[item] is a dict with 'quantity'
         else:
-            inventory[item] = quantity
+            inventory[item] = {'quantity': quantity, 'unit': unit}  # Initialize the item with quantity and unit
     save_inventory(inventory)
+
 
 def get_inventory_prompt():
     inventory = load_inventory()
-    return f"Current inventory: {', '.join([f'{item} ({quantity})' for item, quantity in inventory.items()])}"
+    return f"Current inventory: {', '.join([f'{item} ({data['quantity']} {data['unit']})' for item, data in inventory.items()])}"
 
-# OCR and Receipt Processing Functions
-def perform_ocr(image):
-    """Perform OCR on the uploaded image."""
-    text = pytesseract.image_to_string(image)
-    return text
 
-def extract_grocery_items(text):
-    """Extract grocery items and quantities from OCR text."""
-    lines = text.split('\n')
-    items = {}
-    for line in lines:
-        match = re.search(r'(\d+(?:\.\d+)?)\s*x?\s*(.+)', line)
-        if match:
-            quantity, item = match.groups()
-            items[item.strip()] = float(quantity)
-    return items
-
-def confirm_grocery_items(items):
-    """Allow user to confirm and edit extracted grocery items."""
-    st.write("Please confirm the extracted grocery items:")
-    confirmed_items = {}
-    for item, quantity in items.items():
-        confirmed_quantity = st.number_input(f"Quantity for {item}", value=float(quantity), step=0.1)
-        confirmed_items[item] = confirmed_quantity
+# New function to generate humorous comments
+def generate_humorous_comment(grocery_list, is_off_topic=False):
+    prompt = f"""
+    Generate a humorous comment based on the following scenario:
     
-    # Allow adding missing items
-    new_item = st.text_input("Add a new item (if missing)")
-    if new_item:
-        new_quantity = st.number_input(f"Quantity for {new_item}", value=1.0, step=0.1)
-        confirmed_items[new_item] = new_quantity
-    
-    return confirmed_items
+    Grocery list: {', '.join(grocery_list)}
+    Is the user's question off-topic? {"Yes" if is_off_topic else "No"}
 
-# Meal Plan Generation and Customization
+    The comment should be witty and playful, but not mean-spirited. If the question is off-topic, 
+    gently tease the user before answering their question. If the grocery list is odd, make a joke about 
+    their unusual combination of items.
+    """
+    completion = llm.send_message(prompt)
+    return completion.text
+
+# Modified function to include humor in meal plan generation
 def generate_meal_plan(user_input, preferences, inventory):
     grocery_list = list(inventory.keys())
     humor_comment = generate_humorous_comment(grocery_list)
@@ -153,20 +141,6 @@ def generate_meal_plan(user_input, preferences, inventory):
     - Suggest recipes from the database when available, but also use your general knowledge
     - Be creative and diverse in meal selections
     - Occasionally add humorous comments about the meals or ingredients
-
-    Format the meal plan as follows:
-    Monday:
-    - Breakfast: [Meal name] (Nutritional info: calories, protein, carbs, fat)
-    - Lunch: [Meal name] (Nutritional info: calories, protein, carbs, fat)
-    - Dinner: [Meal name] (Nutritional info: calories, protein, carbs, fat)
-    - Snacks: [Snack names if applicable]
-
-    [Repeat for each day of the week]
-
-    Additional suggestions:
-    - List any missing ingredients that would enhance the meal plan
-    - Provide tips for meal prep or cooking techniques
-    - Include occasional jokes or humorous comments about the meals or ingredients
     """
 
     db_results = collection.query(
@@ -180,6 +154,7 @@ def generate_meal_plan(user_input, preferences, inventory):
     completion = llm.send_message(full_prompt)
     return completion.text
 
+# Meal Plan Customization
 def customize_meal_plan(meal_plan, customization_request):
     prompt = f"""
     Original meal plan:
@@ -193,6 +168,7 @@ def customize_meal_plan(meal_plan, customization_request):
     completion = llm.send_message(prompt)
     return completion.text
 
+# Modified function to handle off-topic questions with humor
 def handle_followup_question(meal_plan, question):
     grocery_list = list(load_inventory().keys())
     is_off_topic = not any(food_related_word in question.lower() for food_related_word in ["food", "meal", "recipe", "ingredient", "cook", "eat"])
@@ -232,76 +208,56 @@ def get_favorite_plan(plan_name):
     favorite_plans = load_favorite_plans()
     return favorite_plans.get(plan_name)
 
-# Humor Generation
-def generate_humorous_comment(grocery_list, is_off_topic=False):
-    prompt = f"""
-    Generate a humorous comment based on the following scenario:
-    
-    Grocery list: {', '.join(grocery_list)}
-    Is the user's question off-topic? {"Yes" if is_off_topic else "No"}
+# Daily follow-up functionality
+def daily_followup():
+    now = datetime.now()
+    day_str = now.strftime("%Y-%m-%d")
+    followups_file = "daily_followups.json"
 
-    The comment should be witty and playful, but not mean-spirited. If the question is off-topic, 
-    gently tease the user before answering their question. If the grocery list is odd, make a joke about 
-    their unusual combination of items.
+    if os.path.exists(followups_file):
+        with open(followups_file, 'r') as f:
+            followups = json.load(f)
+    else:
+        followups = {}
 
-    Example responses:
-    - "Chicken, bananas, and milk? Are you planning a tropical smoothie nightmare?"
-    - "Ah, I see you're going for the 'confused college student' diet. Bold choice!"
-    - "Off-topic AND a weird grocery list? You're really keeping me on my toes today!"
+    if day_str not in followups:
+        followups[day_str] = []
 
-    Please provide a humorous comment in a similar style:
-    """
-    completion = llm.send_message(prompt)
-    return completion.text
+    return followups
 
 # Streamlit UI
 def main():
     st.set_page_config(page_title="Humorous Meal Planning Assistant", page_icon="🍽️", layout="wide", initial_sidebar_state="expanded")
-    st.header("Humorous Meal Planning Assistant using Google Gemini and ChromaDB\n")
 
     # Sidebar for user preferences
-    with st.sidebar:
-        st.markdown("# User Preferences 🥗")
-        preferences = load_preferences()
-        dietary_restrictions = st.multiselect("Dietary Restrictions", ["Vegetarian", "Vegan", "Gluten-free", "Dairy-free"], default=preferences.get("dietary_restrictions", []))
-        favorite_cuisines = st.multiselect("Favorite Cuisines", ["Italian", "Mexican", "Chinese", "Indian", "Japanese"], default=preferences.get("favorite_cuisines", []))
-        allergies = st.text_input("Allergies (comma-separated)", value=", ".join(preferences.get("allergies", [])))
-        health_goals = st.multiselect("Health Goals", ["Weight loss", "Muscle gain", "Heart health", "Diabetes management"], default=preferences.get("health_goals", []))
+    st.sidebar.header("User Preferences 🥗")
+    preferences = load_preferences()
 
-        if st.button("Update Preferences"):
-            update_preferences(dietary_restrictions, favorite_cuisines, allergies.split(','), health_goals)
-            st.success("Preferences updated! Hope you're ready for some culinary adventures!")
+    dietary_restrictions = st.sidebar.multiselect("Dietary Restrictions", ["Vegetarian", "Vegan", "Gluten-free", "Dairy-free"], default=preferences.get("dietary_restrictions", []))
+    favorite_cuisines = st.sidebar.multiselect("Favorite Cuisines", ["Italian", "Mexican", "Chinese", "Indian", "Japanese"], default=preferences.get("favorite_cuisines", []))
+    allergies = st.sidebar.text_input("Allergies (comma-separated)", value=", ".join(preferences.get("allergies", [])))
+    health_goals = st.sidebar.multiselect("Health Goals", ["Weight loss", "Muscle gain", "Heart health", "Diabetes management"], default=preferences.get("health_goals", []))
+
+    vegetarian_mode = st.sidebar.checkbox("Vegetarian Mode", value=False)
+    if vegetarian_mode:
+        st.sidebar.markdown("<style>body { background-color: #d3f9d8; }</style>", unsafe_allow_html=True)
+
+    if st.sidebar.button("Update Preferences"):
+        update_preferences(dietary_restrictions, favorite_cuisines, allergies.split(','), health_goals)
+        st.sidebar.success("Preferences updated! Hope you're ready for some culinary adventures!")
 
     # Main area for grocery input and meal planning
     st.markdown("## Weekly Grocery Input 🛒")
-    
-    # Image upload for OCR
-    uploaded_file = st.file_uploader("Upload a grocery receipt", type=["png", "jpg", "jpeg"])
-    if uploaded_file is not None:
-        image = Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Receipt", use_column_width=True)
-        
-        if st.button("Process Receipt"):
-            with st.spinner("Processing receipt..."):
-                ocr_text = perform_ocr(image)
-                extracted_items = extract_grocery_items(ocr_text)
-                confirmed_items = confirm_grocery_items(extracted_items)
-                
-                # Update inventory with confirmed items
-                update_inventory(confirmed_items)
-                st.success("Inventory updated based on the receipt!")
-
-    # Manual input option
-    st.markdown("### Or enter items manually:")
-    grocery_items = st.text_area("Enter your grocery items (one per line, format: item,quantity)")
-    if st.button("Update Inventory Manually"):
+    grocery_items = st.text_area("Enter your grocery items (one per line, format: item,quantity unit)")
+    if st.button("Update Inventory"):
         grocery_list = {}
         for line in grocery_items.split('\n'):
             if line.strip():
-                item, quantity = line.split(',')
-                grocery_list[item.strip()] = float(quantity.strip())
+                item, quantity_unit = line.split(',')
+                quantity, unit = quantity_unit.split()
+                grocery_list[item.strip()] = (float(quantity.strip()), unit.strip())
         update_inventory(grocery_list)
-        st.success("Inventory updated manually! Let's see what culinary chaos we can create with this!")
+        st.success("Inventory updated! Let's see what culinary chaos we can create with this!")
 
     st.markdown("## Meal Plan Generation 📅")
     user_input = st.text_input("Any specific requests for your meal plan? Don't be shy, surprise me!")
@@ -340,6 +296,18 @@ def main():
         loaded_plan = get_favorite_plan(selected_plan)
         st.session_state.current_meal_plan = loaded_plan
         st.write(loaded_plan)
+
+    # Daily follow-up
+    followups = daily_followup()
+    st.markdown("## Daily Follow-Up 📅")
+    if st.button("Log Today's Cooking"):
+        meal_preparation = st.text_area("What are you preparing today? (Let me know!)")
+        if meal_preparation:
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            followups[today_str].append(meal_preparation)
+            with open("daily_followups.json", 'w') as f:
+                json.dump(followups, f, indent=2)
+            st.success("Logged your meal preparation! Can't wait to hear about it!")
 
 if __name__ == "__main__":
     main()
