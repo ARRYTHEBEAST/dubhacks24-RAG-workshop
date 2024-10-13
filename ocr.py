@@ -28,7 +28,7 @@ genai.configure(api_key="AIzaSyBeSeig1txnJMY22RgX4sH5WrgpRQvChv0")
 
 # Initialize the Generative AI model
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+    model_name="gemini-1.5-pro-002",
     system_instruction=system_prompt
 )
 

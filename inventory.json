@@ -12,7 +12,7 @@
     "unit": ""
   },
   "chicken": {
-    "quantity": 15.0,
+    "quantity": 26.0,
     "unit": ""
   },
   "brocoli": {
@@ -24,7 +24,7 @@
     "unit": ""
   },
   "banana": {
-    "quantity": 13.0,
+    "quantity": 17.0,
     "unit": ""
   },
   "chips": {
@@ -36,7 +36,7 @@
     "unit": ""
   },
   "cheese": {
-    "quantity": 32.0,
+    "quantity": 35.0,
     "unit": ""
   },
   "pizza": {
@@ -120,7 +120,7 @@
     "unit": "g"
   },
   "cauliflower": {
-    "quantity": 19.0,
+    "quantity": 333.0,
     "unit": "g"
   },
   "Chicken": {
@@ -130,5 +130,17 @@
   "Mutton": {
     "quantity": 1.0,
     "unit": "kg"
+  },
+  "cookies": {
+    "quantity": 6.0,
+    "unit": "kg"
+  },
+  "soy sauce": {
+    "quantity": 12.0,
+    "unit": "kg"
+  },
+  "cherries": {
+    "quantity": 24.0,
+    "unit": "pcs"
   }
 }

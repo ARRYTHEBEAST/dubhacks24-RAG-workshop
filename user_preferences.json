@@ -1,8 +1,11 @@
 {
   "dietary_restrictions": [],
-  "favorite_cuisines": [],
+  "favorite_cuisines": [
+    "Chinese",
+    "Indian"
+  ],
   "allergies": [
-    ""
+    "Milk"
   ],
   "health_goals": []
 }
